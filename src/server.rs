@@ -16,6 +16,7 @@ use tokio::prelude::future::FutureResult;
 use tokio::prelude::IntoFuture;
 use tokio::runtime::Runtime;
 use regex::Regex;
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct ServerHandler {
@@ -72,7 +73,7 @@ fn find_matching_request(request: &Request, auto_cors: bool, sources: &Vec<Pact>
             if auto_cors && request.method.to_uppercase() == "OPTIONS" {
                 Ok(Response {
                     headers: Some(hashmap!{
-                    s!("Access-Control-Allow-Headers") => vec![s!("*")],
+                    s!("Access-Control-Allow-Headers") => vec![extract_header_names(request.headers.as_ref())],
                     s!("Access-Control-Allow-Methods") => vec![s!("GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH")],
                     s!("Access-Control-Allow-Origin") => vec![s!("*")]
                   }),
@@ -83,6 +84,15 @@ fn find_matching_request(request: &Request, auto_cors: bool, sources: &Vec<Pact>
             }
         }
     }
+}
+
+fn extract_header_names(headers: Option<&HashMap<String, Vec<String>>>) -> String {
+    match headers {
+        None => String::from("*"),
+        Some(h) => {
+            h.keys().map(|s| &**s).collect::<Vec<_>>().join(", ")
+        } 
+    
 }
 
 fn handle_request(request: Request, auto_cors: bool, sources: Arc<Vec<Pact>>, provider_state: Option<Regex>) -> Response {
